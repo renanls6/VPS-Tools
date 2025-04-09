@@ -91,6 +91,12 @@ monitor_disk_usage() {
     df -h | grep '/dev/' | awk '{print $5 " used on " $1}'
 }
 
+# Função para exibir as sessões de screen ativas
+monitor_screens() {
+    print_header "Active Screen Sessions"
+    screen -ls
+}
+
 # Função para exibir uma animação de carregamento
 show_loading() {
     echo -n "Carregando informações do sistema"
@@ -121,7 +127,8 @@ while true; do
     monitor_cpu_usage
     monitor_memory_usage
     monitor_disk_usage
+    monitor_screens  # Exibir as sessões do screen
 
-    # Atraso de 2 segundos antes de atualizar
-    sleep 2
+    # Atraso de 1 minuto (60 segundos) antes de atualizar
+    sleep 60
 done
