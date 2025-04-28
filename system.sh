@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Cores para o terminal
+# Terminal Colors
 RESET='\033[0m'
 BOLD='\033[1m'
 GREEN='\033[0;32m'
@@ -10,14 +10,14 @@ WHITE='\033[1;37m'
 RED='\033[0;31m'
 MAGENTA='\033[0;35m'
 
-# Função para exibir cabeçalhos
+# Function to print headers
 print_header() {
     echo -e "${CYAN}======================================"
     echo -e "        $1"
     echo -e "======================================${RESET}"
 }
 
-# Função para obter informações do sistema
+# Function to gather system information
 get_system_info() {
     vcpus=$(nproc)
     total_ram=$(free -h | grep Mem | awk '{print $2}')
@@ -34,16 +34,24 @@ get_system_info() {
     arch_info=$(uname -m)
     kernel_version=$(uname -r)
 
-    # Verificar temperatura da CPU (se o 'sensors' estiver disponível)
+    # Check CPU temperature (if 'sensors' is available)
     if command -v sensors &> /dev/null
     then
         cpu_temp=$(sensors | grep 'Core 0' | awk '{print $3}' | sed 's/+//g')
     else
         cpu_temp="N/A"
     fi
+
+    # Check GPU status (if nvidia-smi is available)
+    if command -v nvidia-smi &> /dev/null
+    then
+        gpu_info=$(nvidia-smi --query-gpu=name,utilization.gpu,temperature.gpu,memory.used,memory.total --format=csv,noheader,nounits)
+    else
+        gpu_info="No NVIDIA GPU detected."
+    fi
 }
 
-# Função para exibir informações do sistema
+# Function to display system information
 display_system_info() {
     print_header "System Information"
 
@@ -63,43 +71,50 @@ display_system_info() {
     echo -e "${BOLD}${WHITE}Architecture:${RESET} ${GREEN}$arch_info${RESET}"
     echo -e "${BOLD}${WHITE}Kernel Version:${RESET} ${GREEN}$kernel_version${RESET}"
 
-    # Linha separadora
+    # GPU Information
+    print_header "GPU Information"
+    if [[ "$gpu_info" == "No NVIDIA GPU detected." ]]; then
+        echo -e "${RED}$gpu_info${RESET}"
+    else
+        echo -e "${GREEN}$gpu_info${RESET}" | awk -F, '{ printf "GPU: %s | Usage: %s%% | Temp: %s°C | Memory: %sMB / %sMB\n", $1, $2, $3, $4, $5 }'
+    fi
+
     echo -e "${CYAN}======================================${RESET}"
 }
 
-# Função para monitorar os processos de CPU
+# Function to monitor top CPU processes
 monitor_cpu_processes() {
     print_header "Top 5 CPU Processes"
     ps -eo pid,ppid,cmd,%cpu,%mem --sort=-%cpu | head -6
 }
 
-# Função para monitorar o uso da CPU
+# Function to monitor CPU usage
 monitor_cpu_usage() {
     print_header "CPU Usage"
     top -bn1 | grep "Cpu(s)" | sed "s/.*, *\([0-9.]*\)%* id.*/\1/" | awk '{print 100 - $1"%"}'
 }
 
-# Função para monitorar o uso de memória
+# Function to monitor memory usage
 monitor_memory_usage() {
     print_header "Memory Usage"
     free -m | grep Mem | awk '{print $3 " MB used / " $2 " MB total"}'
 }
 
-# Função para monitorar o uso de disco
+# Function to monitor disk usage
 monitor_disk_usage() {
     print_header "Disk Usage"
     df -h | grep '/dev/' | awk '{print $5 " used on " $1}'
 }
 
-# Função para exibir as sessões de screen ativas
+# Function to monitor active screen sessions
 monitor_screens() {
     print_header "Active Screen Sessions"
     screen -ls
 }
 
-# Função para exibir uma animação de carregamento
+# Function to show a loading animation
 show_loading() {
-    echo -n "Carregando informações do sistema"
+    echo -n "Loading system information"
     for i in {1..3}
     do
         echo -n "."
@@ -108,27 +123,27 @@ show_loading() {
     echo ""
 }
 
-# Loop de monitoramento principal
+# Main monitoring loop
 while true; do
-    # Exibir uma animação enquanto as informações estão sendo carregadas
+    # Show loading animation
     show_loading
 
-    # Obter as informações do sistema
+    # Get system information
     get_system_info
 
-    # Mover o cursor para o topo da tela
+    # Clear screen
     tput reset
 
-    # Exibir as informações do sistema
+    # Display system information
     display_system_info
 
-    # Exibir as informações de monitoramento
+    # Display monitoring information
     monitor_cpu_processes
     monitor_cpu_usage
     monitor_memory_usage
     monitor_disk_usage
-    monitor_screens  # Exibir as sessões do screen
+    monitor_screens
 
-    # Atraso de 1 minuto (60 segundos) antes de atualizar
+    # Wait 60 seconds before updating again
     sleep 60
 done
